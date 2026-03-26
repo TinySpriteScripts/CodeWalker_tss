@@ -1,4 +1,4 @@
-name: Build and Release
+﻿name: Build and Release
 
 on:
   push:
@@ -14,17 +14,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup NuGet
-        uses: NuGet/setup-nuget@v2
-
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
-      - name: Restore
-        run: nuget restore CodeWalker.sln
-
-      - name: Build Release
-        run: msbuild CodeWalker.sln /t:Build /p:Configuration=Release /p:Platform="Any CPU" /m
+      - name: Restore + Build Release
+        run: msbuild CodeWalker.sln /restore /t:Build /p:Configuration=Release /p:Platform="Any CPU" /p:RuntimeIdentifier=win-x64 /m
 
       - name: Package binaries
         shell: pwsh
@@ -32,7 +26,7 @@ jobs:
           $out = "release-package"
           New-Item -ItemType Directory -Force -Path $out | Out-Null
           Copy-Item "CodeWalker\bin\Release\net48\*" -Destination $out -Recurse -Force
-          
+
           # Include ImageDB if you want it shipped with release:
           if (Test-Path "ImageDB") {
             Copy-Item "ImageDB" -Destination $out -Recurse -Force

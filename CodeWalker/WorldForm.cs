@@ -195,6 +195,7 @@ namespace CodeWalker
         SettingsForm SettingsForm = null;
 
         WorldSearchForm SearchForm = null;
+        ObjectLibraryForm objectLibraryForm = null;
 
         CutsceneForm CutsceneForm = null;
 
@@ -4131,6 +4132,33 @@ namespace CodeWalker
             //ToolbarSearchWindowButton.Checked = false;
         }
 
+        private void ShowObjectLibraryForm()
+        {
+            if (objectLibraryForm == null)
+            {
+                objectLibraryForm = new ObjectLibraryForm();
+                objectLibraryForm.FormClosed += ObjectLibraryForm_FormClosed;
+                objectLibraryForm.Show(this);
+            }
+            else
+            {
+                if (objectLibraryForm.WindowState == FormWindowState.Minimized)
+                {
+                    objectLibraryForm.WindowState = FormWindowState.Normal;
+                }
+                objectLibraryForm.Focus();
+            }
+        }
+
+        private void ObjectLibraryForm_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            if (objectLibraryForm != null)
+            {
+                objectLibraryForm.FormClosed -= ObjectLibraryForm_FormClosed;
+            }
+            objectLibraryForm = null;
+        }
+
         private void ShowCutsceneForm()
         {
             if (CutsceneForm == null)
@@ -7053,6 +7081,11 @@ namespace CodeWalker
         private void ToolsMenuProjectWindow_Click(object sender, EventArgs e)
         {
             ShowProjectForm();
+        }
+
+        private void ToolsMenuObjectLibrary_Click(object sender, EventArgs e)
+        {
+            ShowObjectLibraryForm();
         }
 
         private void ToolsMenuCutsceneViewer_Click(object sender, EventArgs e)

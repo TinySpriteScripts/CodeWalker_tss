@@ -223,6 +223,7 @@ namespace CodeWalker
             this.ToolsMenuRPFExplorer = new System.Windows.Forms.ToolStripMenuItem();
             this.ToolsMenuSelectionInfo = new System.Windows.Forms.ToolStripMenuItem();
             this.ToolsMenuProjectWindow = new System.Windows.Forms.ToolStripMenuItem();
+            this.ToolsMenuObjectLibrary = new System.Windows.Forms.ToolStripMenuItem();
             this.ToolsMenuCutsceneViewer = new System.Windows.Forms.ToolStripMenuItem();
             this.ToolsMenuAudioExplorer = new System.Windows.Forms.ToolStripMenuItem();
             this.ToolsMenuWorldSearch = new System.Windows.Forms.ToolStripMenuItem();
@@ -2752,6 +2753,7 @@ namespace CodeWalker
             this.ToolsMenuRPFExplorer,
             this.ToolsMenuSelectionInfo,
             this.ToolsMenuProjectWindow,
+            this.ToolsMenuObjectLibrary,
             this.ToolsMenuCutsceneViewer,
             this.ToolsMenuAudioExplorer,
             this.ToolsMenuWorldSearch,
@@ -2764,7 +2766,7 @@ namespace CodeWalker
             this.ToolsMenuExtractShaders,
             this.ToolsMenuOptions});
             this.ToolsMenu.Name = "ToolsMenu";
-            this.ToolsMenu.Size = new System.Drawing.Size(171, 356);
+            this.ToolsMenu.Size = new System.Drawing.Size(171, 378);
             // 
             // ToolsMenuConfigureGame
             // 
@@ -2802,6 +2804,13 @@ namespace CodeWalker
             this.ToolsMenuProjectWindow.Size = new System.Drawing.Size(170, 22);
             this.ToolsMenuProjectWindow.Text = "Project window...";
             this.ToolsMenuProjectWindow.Click += new System.EventHandler(this.ToolsMenuProjectWindow_Click);
+            // 
+            // ToolsMenuObjectLibrary
+            // 
+            this.ToolsMenuObjectLibrary.Name = "ToolsMenuObjectLibrary";
+            this.ToolsMenuObjectLibrary.Size = new System.Drawing.Size(170, 22);
+            this.ToolsMenuObjectLibrary.Text = "Object library...";
+            this.ToolsMenuObjectLibrary.Click += new System.EventHandler(this.ToolsMenuObjectLibrary_Click);
             // 
             // ToolsMenuCutsceneViewer
             // 
@@ -3844,6 +3853,7 @@ namespace CodeWalker
         private System.Windows.Forms.CheckBox PathsCheckBox;
         private System.Windows.Forms.TabPage OptionsRenderTabPage;
         private System.Windows.Forms.ToolStripMenuItem ToolsMenuProjectWindow;
+        private System.Windows.Forms.ToolStripMenuItem ToolsMenuObjectLibrary;
         private System.Windows.Forms.CheckBox WaterQuadsCheckBox;
         private System.Windows.Forms.ComboBox CameraModeComboBox;
         private System.Windows.Forms.Label label24;

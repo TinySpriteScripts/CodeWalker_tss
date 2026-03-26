@@ -47,33 +47,35 @@ jobs:
             Copy-Item "Shaders" -Destination $appRoot -Recurse -Force
           }
 
-          @"
-          CodeWalker_tss Release
-          ======================
-
-          1) Extract this zip.
-          2) Run codewalker_tss\CodeWalker.exe
-
-          Optional ImageDB pack:
-          - Download codewalker_tss-imagedb.zip from the same release.
-          - Extract so the folder path is:
-            codewalker_tss\ImageDB\
-"@ | Set-Content -Encoding UTF8 (Join-Path $appRoot "README_ImageDB.txt")
+          $readmeMain = @(
+            "CodeWalker_tss Release",
+            "======================",
+            "",
+            "1) Extract this zip.",
+            "2) Run codewalker_tss\CodeWalker.exe",
+            "",
+            "Optional ImageDB pack:",
+            "- Download codewalker_tss-imagedb.zip from the same release.",
+            "- Extract so the folder path is:",
+            "  codewalker_tss\ImageDB\"
+          )
+          Set-Content -Encoding UTF8 -Path (Join-Path $appRoot "README_ImageDB.txt") -Value $readmeMain
 
           # Package ImageDB separately so updates don't force a 1.3GB download.
           if (Test-Path "ImageDB") {
             New-Item -ItemType Directory -Force -Path $imgRoot | Out-Null
             Copy-Item "ImageDB\*" -Destination $imgRoot -Recurse -Force
 
-            @"
-            ImageDB Pack
-            ============
-
-            Extract this so the final path is:
-            codewalker_tss\ImageDB\
-
-            The ImageDB folder should sit next to CodeWalker.exe.
-"@ | Set-Content -Encoding UTF8 (Join-Path $imgOut "README_ImageDB_INSTALL.txt")
+            $readmeImageDb = @(
+              "ImageDB Pack",
+              "============",
+              "",
+              "Extract this so the final path is:",
+              "codewalker_tss\ImageDB\",
+              "",
+              "The ImageDB folder should sit next to CodeWalker.exe."
+            )
+            Set-Content -Encoding UTF8 -Path (Join-Path $imgOut "README_ImageDB_INSTALL.txt") -Value $readmeImageDb
 
             Compress-Archive -Path "$imgOut\*" -DestinationPath "codewalker_tss-imagedb.zip" -Force
           }

@@ -603,18 +603,399 @@ namespace CodeWalker.GameFiles
                    (a.MaxY >= b.MinY) && (a.MinY <= b.MaxY);
         }
 
+        private static readonly ushort InvalidPolyId = 0x3FFF;
+        private static readonly uint InvalidAreaId = 0x3FFF;
+
+        private bool IsLocalArea(uint areaId)
+        {
+            return (Nav != null) && (areaId == Nav.AreaID);
+        }
+        private YnvEdge CreateDefaultEdge(YnvPoly owner)
+        {
+            var e = new YnvEdge();
+            e.Ynv = this;
+            e.RawData = new NavMeshEdge();
+            e.Poly1 = owner;
+            e.Poly2 = owner;
+            e.AreaID1 = InvalidAreaId;
+            e.AreaID2 = InvalidAreaId;
+            e.PolyID1 = InvalidPolyId;
+            e.PolyID2 = InvalidPolyId;
+            return e;
+        }
+        private ushort[] RepairPortalLinksArray(ushort[] links)
+        {
+            if ((links == null) || (links.Length == 0)) return null;
+            int portalCount = Portals?.Count ?? 0;
+            var repaired = new List<ushort>(links.Length);
+            for (int i = 0; i < links.Length; i++)
+            {
+                ushort link = links[i];
+                if (link < portalCount)
+                {
+                    repaired.Add(link);
+                }
+            }
+            return (repaired.Count > 0) ? repaired.ToArray() : null;
+        }
+        private void ReindexPolys()
+        {
+            if (Polys == null) return;
+            for (int i = 0; i < Polys.Count; i++)
+            {
+                var poly = Polys[i];
+                poly.Ynv = this;
+                poly.Index = i;
+            }
+        }
+        private void ReindexPoints()
+        {
+            if (Points == null) return;
+            for (int i = 0; i < Points.Count; i++)
+            {
+                var point = Points[i];
+                point.Ynv = this;
+                point.Index = i;
+            }
+        }
+        private void ReindexPortals()
+        {
+            if (Portals == null) return;
+            for (int i = 0; i < Portals.Count; i++)
+            {
+                var portal = Portals[i];
+                portal.Ynv = this;
+                portal.Index = i;
+            }
+        }
+        private void ReindexAndRepairPolyReferences(int removedPolyIndex = -1)
+        {
+            int polyCount = Polys?.Count ?? 0;
+            uint areaId = Nav?.AreaID ?? 0;
+
+            if (Polys != null)
+            {
+                for (int i = 0; i < Polys.Count; i++)
+                {
+                    var poly = Polys[i];
+                    if (poly == null) continue;
+
+                    if ((poly.Vertices == null) || (poly.Vertices.Length < 3))
+                    {
+                        poly.Vertices = poly.Vertices ?? new Vector3[0];
+                    }
+
+                    int vcount = poly.Vertices.Length;
+                    poly.Indices = new ushort[vcount];
+                    if ((poly.Edges == null) || (poly.Edges.Length != vcount))
+                    {
+                        var oldEdges = poly.Edges;
+                        var newEdges = new YnvEdge[vcount];
+                        for (int n = 0; n < vcount; n++)
+                        {
+                            var edge = ((oldEdges != null) && (n < oldEdges.Length)) ? oldEdges[n] : null;
+                            if (edge == null)
+                            {
+                                edge = CreateDefaultEdge(poly);
+                            }
+                            edge.Ynv = this;
+                            newEdges[n] = edge;
+                        }
+                        poly.Edges = newEdges;
+                    }
+                    for (int n = 0; n < vcount; n++)
+                    {
+                        var edge = poly.Edges[n];
+                        if (edge == null)
+                        {
+                            edge = CreateDefaultEdge(poly);
+                            poly.Edges[n] = edge;
+                        }
+                        edge.Ynv = this;
+
+                        if (removedPolyIndex >= 0)
+                        {
+                            if (IsLocalArea(edge.AreaID1))
+                            {
+                                if (edge.PolyID1 == removedPolyIndex) edge.PolyID1 = InvalidPolyId;
+                                else if (edge.PolyID1 > removedPolyIndex && edge.PolyID1 != InvalidPolyId) edge.PolyID1--;
+                            }
+                            if (IsLocalArea(edge.AreaID2))
+                            {
+                                if (edge.PolyID2 == removedPolyIndex) edge.PolyID2 = InvalidPolyId;
+                                else if (edge.PolyID2 > removedPolyIndex && edge.PolyID2 != InvalidPolyId) edge.PolyID2--;
+                            }
+                        }
+
+                        if (IsLocalArea(edge.AreaID1))
+                        {
+                            if (edge.PolyID1 >= polyCount)
+                            {
+                                edge.AreaID1 = InvalidAreaId;
+                                edge.PolyID1 = InvalidPolyId;
+                                edge.Poly1 = null;
+                            }
+                            else
+                            {
+                                edge.Poly1 = Polys[(int)edge.PolyID1];
+                            }
+                        }
+                        else
+                        {
+                            edge.Poly1 = null;
+                        }
+
+                        if (IsLocalArea(edge.AreaID2))
+                        {
+                            if (edge.PolyID2 >= polyCount)
+                            {
+                                edge.AreaID2 = InvalidAreaId;
+                                edge.PolyID2 = InvalidPolyId;
+                                edge.Poly2 = null;
+                            }
+                            else
+                            {
+                                edge.Poly2 = Polys[(int)edge.PolyID2];
+                            }
+                        }
+                        else
+                        {
+                            edge.Poly2 = null;
+                        }
+                    }
+
+                    poly.PortalLinks = RepairPortalLinksArray(poly.PortalLinks);
+                    poly.PortalLinkCount = (byte)(poly.PortalLinks?.Length ?? 0);
+                    poly.AreaID = (ushort)areaId;
+                    poly.CalculatePosition();
+                    poly.CalculateAABB();
+                }
+            }
+
+            if (Portals != null)
+            {
+                for (int i = 0; i < Portals.Count; i++)
+                {
+                    var portal = Portals[i];
+                    if (portal == null) continue;
+                    portal.Ynv = this;
+                    portal.AreaIDFrom = (ushort)areaId;
+                    portal.AreaIDTo = (ushort)areaId;
+
+                    if (removedPolyIndex >= 0)
+                    {
+                        if (portal.PolyIDFrom1 == removedPolyIndex) portal.PolyIDFrom1 = InvalidPolyId;
+                        else if (portal.PolyIDFrom1 > removedPolyIndex && portal.PolyIDFrom1 != InvalidPolyId) portal.PolyIDFrom1--;
+
+                        if (portal.PolyIDFrom2 == removedPolyIndex) portal.PolyIDFrom2 = InvalidPolyId;
+                        else if (portal.PolyIDFrom2 > removedPolyIndex && portal.PolyIDFrom2 != InvalidPolyId) portal.PolyIDFrom2--;
+
+                        if (portal.PolyIDTo1 == removedPolyIndex) portal.PolyIDTo1 = InvalidPolyId;
+                        else if (portal.PolyIDTo1 > removedPolyIndex && portal.PolyIDTo1 != InvalidPolyId) portal.PolyIDTo1--;
+
+                        if (portal.PolyIDTo2 == removedPolyIndex) portal.PolyIDTo2 = InvalidPolyId;
+                        else if (portal.PolyIDTo2 > removedPolyIndex && portal.PolyIDTo2 != InvalidPolyId) portal.PolyIDTo2--;
+                    }
+
+                    if (portal.PolyIDFrom1 >= polyCount) portal.PolyIDFrom1 = InvalidPolyId;
+                    if (portal.PolyIDFrom2 >= polyCount) portal.PolyIDFrom2 = InvalidPolyId;
+                    if (portal.PolyIDTo1 >= polyCount) portal.PolyIDTo1 = InvalidPolyId;
+                    if (portal.PolyIDTo2 >= polyCount) portal.PolyIDTo2 = InvalidPolyId;
+                }
+            }
+        }
+        public void RepairLinksAndReindex(int removedPolyIndex = -1)
+        {
+            Polys = Polys ?? new List<YnvPoly>();
+            Points = Points ?? new List<YnvPoint>();
+            Portals = Portals ?? new List<YnvPortal>();
+
+            ReindexPolys();
+            ReindexPoints();
+            ReindexPortals();
+            ReindexAndRepairPolyReferences(removedPolyIndex);
+        }
+        public List<string> ValidateNavMesh(bool attemptRepair = false)
+        {
+            var issues = new List<string>();
+
+            if (Nav == null)
+            {
+                issues.Add("Nav mesh data is null.");
+                return issues;
+            }
+
+            if (attemptRepair)
+            {
+                RepairLinksAndReindex();
+            }
+
+            int polyCount = Polys?.Count ?? 0;
+            int portalCount = Portals?.Count ?? 0;
+
+            if (Polys != null)
+            {
+                for (int i = 0; i < Polys.Count; i++)
+                {
+                    var poly = Polys[i];
+                    if (poly == null)
+                    {
+                        issues.Add($"Poly[{i}] is null.");
+                        continue;
+                    }
+                    if (poly.Index != i)
+                    {
+                        issues.Add($"Poly[{i}] index mismatch (stored: {poly.Index}).");
+                    }
+                    if ((poly.Vertices == null) || (poly.Vertices.Length < 3))
+                    {
+                        issues.Add($"Poly[{i}] has fewer than 3 vertices.");
+                    }
+                    if ((poly.Edges == null) || (poly.Vertices != null && poly.Edges.Length != poly.Vertices.Length))
+                    {
+                        issues.Add($"Poly[{i}] edges count does not match vertices count.");
+                    }
+                    if (poly.PortalLinks != null)
+                    {
+                        for (int l = 0; l < poly.PortalLinks.Length; l++)
+                        {
+                            if (poly.PortalLinks[l] >= portalCount)
+                            {
+                                issues.Add($"Poly[{i}] has invalid portal link id {poly.PortalLinks[l]}.");
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (Portals != null)
+            {
+                for (int i = 0; i < Portals.Count; i++)
+                {
+                    var portal = Portals[i];
+                    if (portal == null)
+                    {
+                        issues.Add($"Portal[{i}] is null.");
+                        continue;
+                    }
+                    if (portal.Index != i)
+                    {
+                        issues.Add($"Portal[{i}] index mismatch (stored: {portal.Index}).");
+                    }
+                    if ((portal.PolyIDFrom1 != InvalidPolyId) && (portal.PolyIDFrom1 >= polyCount))
+                    {
+                        issues.Add($"Portal[{i}] PolyIDFrom1 ({portal.PolyIDFrom1}) is out of range.");
+                    }
+                    if ((portal.PolyIDFrom2 != InvalidPolyId) && (portal.PolyIDFrom2 >= polyCount))
+                    {
+                        issues.Add($"Portal[{i}] PolyIDFrom2 ({portal.PolyIDFrom2}) is out of range.");
+                    }
+                    if ((portal.PolyIDTo1 != InvalidPolyId) && (portal.PolyIDTo1 >= polyCount))
+                    {
+                        issues.Add($"Portal[{i}] PolyIDTo1 ({portal.PolyIDTo1}) is out of range.");
+                    }
+                    if ((portal.PolyIDTo2 != InvalidPolyId) && (portal.PolyIDTo2 >= polyCount))
+                    {
+                        issues.Add($"Portal[{i}] PolyIDTo2 ({portal.PolyIDTo2}) is out of range.");
+                    }
+                }
+            }
+
+            if (Points != null)
+            {
+                for (int i = 0; i < Points.Count; i++)
+                {
+                    var point = Points[i];
+                    if (point == null)
+                    {
+                        issues.Add($"Point[{i}] is null.");
+                        continue;
+                    }
+                    if (point.Index != i)
+                    {
+                        issues.Add($"Point[{i}] index mismatch (stored: {point.Index}).");
+                    }
+                }
+            }
+
+            if (attemptRepair)
+            {
+                UpdateContentFlags(((Nav.ContentFlags & NavMeshFlags.Vehicle) != 0));
+                UpdateAllNodePositions();
+                UpdateTriangleVertices();
+                BuildBVH();
+            }
+
+            return issues;
+        }
+        private void RefreshAfterStructureChange()
+        {
+            UpdateContentFlags(((Nav?.ContentFlags ?? 0) & NavMeshFlags.Vehicle) != 0);
+            UpdateAllNodePositions();
+            UpdateTriangleVertices();
+            BuildBVH();
+        }
 
         public bool RemovePoly(YnvPoly poly)
         {
-            return false;
+            if (poly == null) return false;
+            if (Polys == null) return false;
+
+            int index = Polys.IndexOf(poly);
+            if (index < 0) return false;
+
+            Polys.RemoveAt(index);
+            RepairLinksAndReindex(index);
+            RefreshAfterStructureChange();
+            return true;
         }
         public bool RemovePoint(YnvPoint point)
         {
-            return false;
+            if (point == null) return false;
+            if (Points == null) return false;
+
+            int index = Points.IndexOf(point);
+            if (index < 0) return false;
+
+            Points.RemoveAt(index);
+            ReindexPoints();
+            RefreshAfterStructureChange();
+            return true;
         }
         public bool RemovePortal(YnvPortal portal)
         {
-            return false;
+            if (portal == null) return false;
+            if (Portals == null) return false;
+
+            int index = Portals.IndexOf(portal);
+            if (index < 0) return false;
+
+            Portals.RemoveAt(index);
+            ReindexPortals();
+
+            if (Polys != null)
+            {
+                for (int i = 0; i < Polys.Count; i++)
+                {
+                    var poly = Polys[i];
+                    if ((poly?.PortalLinks == null) || (poly.PortalLinks.Length == 0)) continue;
+
+                    var links = new List<ushort>(poly.PortalLinks.Length);
+                    for (int l = 0; l < poly.PortalLinks.Length; l++)
+                    {
+                        ushort link = poly.PortalLinks[l];
+                        if (link == index) continue;
+                        if (link > index) link--;
+                        if (link < Portals.Count) links.Add(link);
+                    }
+                    poly.PortalLinks = (links.Count > 0) ? links.ToArray() : null;
+                    poly.PortalLinkCount = (byte)(poly.PortalLinks?.Length ?? 0);
+                }
+            }
+
+            RepairLinksAndReindex();
+            RefreshAfterStructureChange();
+            return true;
         }
 
 
@@ -673,8 +1054,18 @@ namespace CodeWalker.GameFiles
 
             //go through the nav mesh polys and generate verts to render...
 
-            if ((Polys == null) || (Polys.Count == 0)) return;
+            if ((Polys == null) || (Polys.Count == 0))
+            {
+                TriangleVerts = null;
+                return;
+            }
 
+
+            if (Vertices == null)
+            {
+                TriangleVerts = null;
+                return;
+            }
 
             int vc = Vertices.Count;
 
@@ -890,8 +1281,15 @@ namespace CodeWalker.GameFiles
         public void SetPosition(Vector3 pos)
         {
             Vector3 delta = pos - Position;
-            Position = pos;
-            //TODO: update vertex positions!!!
+            if ((Vertices != null) && (delta != Vector3.Zero))
+            {
+                for (int i = 0; i < Vertices.Length; i++)
+                {
+                    Vertices[i] += delta;
+                }
+            }
+            CalculatePosition();
+            CalculateAABB();
         }
 
         public Color4 GetColour()

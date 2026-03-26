@@ -3014,13 +3014,48 @@ namespace CodeWalker
                 {
                     UpdateMouseHits(ynv.BVH, ref mray);
                 }
-                //if ((CurMouseHit.NavPoint != null) || (CurMouseHit.NavPortal != null)) continue;
-                if ((ynv.Nav != null) && (ynv.Vertices != null) && (ynv.Indices != null) && (ynv.Polys != null))
+                if ((ynv.Nav != null) && (ynv.Polys != null))
                 {
-                    UpdateMouseHits(ynv, ynv.Nav.SectorTree, ynv.Nav.SectorTree, ref mray);
+                    UpdateMouseHitsNavPolys(ynv, ref mray);
                 }
             }
 
+        }
+        private void UpdateMouseHitsNavPolys(YnvFile ynv, ref Ray mray)
+        {
+            var polys = ynv.Polys;
+            if (polys == null) return;
+
+            float hitdist = float.MaxValue;
+
+            for (int i = 0; i < polys.Count; i++)
+            {
+                var poly = polys[i];
+                var verts = poly?.Vertices;
+                if ((verts == null) || (verts.Length < 3))
+                {
+                    continue;
+                }
+
+                Vector3 p0 = verts[0];
+                int tricount = verts.Length - 2;
+                for (int t = 0; t < tricount; t++)
+                {
+                    Vector3 p1 = verts[t + 1];
+                    Vector3 p2 = verts[t + 2];
+
+                    if (mray.Intersects(ref p0, ref p1, ref p2, out hitdist) && (hitdist < CurMouseHit.HitDist) && (hitdist > 0))
+                    {
+                        var cellaabb = poly._RawData.CellAABB;
+                        CurMouseHit.NavPoly = poly;
+                        CurMouseHit.NavPoint = null;
+                        CurMouseHit.NavPortal = null;
+                        CurMouseHit.HitDist = hitdist;
+                        CurMouseHit.AABB = new BoundingBox(cellaabb.Min, cellaabb.Max);
+                        break;
+                    }
+                }
+            }
         }
         private void UpdateMouseHits(YnvFile ynv, NavMeshSector navsector, NavMeshSector rootsec, ref Ray mray)
         {

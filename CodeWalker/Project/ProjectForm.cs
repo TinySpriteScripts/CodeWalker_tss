@@ -5042,43 +5042,571 @@ namespace CodeWalker.Project
             return CurrentProjectFile.ContainsYnv(ynv);
         }
 
-        public YnvPoly NewNavPoly(YnvPoly copy = null, bool copyposition = false, bool selectNew = true)//TODO!
+        private YnvEdge CreateDefaultNavEdge(YnvPoly owner)
         {
-            return null;
+            var edge = new YnvEdge();
+            edge.Ynv = owner?.Ynv;
+            edge.RawData = new NavMeshEdge();
+            edge.Poly1 = owner;
+            edge.Poly2 = owner;
+            edge.AreaID1 = 0x3FFF;
+            edge.AreaID2 = 0x3FFF;
+            edge.PolyID1 = 0x3FFF;
+            edge.PolyID2 = 0x3FFF;
+            return edge;
         }
-        public bool DeleteNavPoly()//TODO!
+        private YnvEdge CloneNavEdge(YnvEdge source, YnvPoly owner)
         {
-            return false;
+            if (source == null) return CreateDefaultNavEdge(owner);
+            var edge = new YnvEdge(source, owner);
+            edge.Ynv = owner?.Ynv;
+            return edge;
+        }
+        private bool IsBoundaryEdge(int from, int to, int vcount)
+        {
+            if (vcount <= 0) return false;
+            return (((from + 1) % vcount) == to);
+        }
+        private YnvEdge[] BuildSplitTriangleEdges(YnvPoly source, YnvPoly tri, int ia, int ib, int ic)
+        {
+            int vcount = source.Vertices?.Length ?? 0;
+            var srcEdges = source.Edges;
+            var res = new YnvEdge[3];
+            int[] froms = { ia, ib, ic };
+            int[] tos = { ib, ic, ia };
+            for (int i = 0; i < 3; i++)
+            {
+                int from = froms[i];
+                int to = tos[i];
+                if (IsBoundaryEdge(from, to, vcount) && (srcEdges != null) && (from >= 0) && (from < srcEdges.Length))
+                {
+                    res[i] = CloneNavEdge(srcEdges[from], tri);
+                }
+                else
+                {
+                    res[i] = CreateDefaultNavEdge(tri);
+                }
+            }
+            return res;
+        }
+        private void RefreshNavEditor(YnvFile ynv, object selectedItem = null, bool selectInTree = true)
+        {
+            if (ynv == null) return;
+
+            SetProjectItem(selectedItem ?? ynv, false);
+            SetYnvHasChanged(true);
+
+            LoadProjectTree();
+
+            if (selectInTree)
+            {
+                if (selectedItem is YnvPoly sp) ProjectExplorer?.TrySelectNavPolyTreeNode(sp);
+                else if (selectedItem is YnvPoint spt) ProjectExplorer?.TrySelectNavPointTreeNode(spt);
+                else if (selectedItem is YnvPortal spo) ProjectExplorer?.TrySelectNavPortalTreeNode(spo);
+            }
+
+            if (WorldForm != null)
+            {
+                WorldForm.UpdateNavYnvGraphics(ynv, true);
+            }
+        }
+
+        public YnvPoly NewNavPoly(YnvPoly copy = null, bool copyposition = false, bool selectNew = true)
+        {
+            var ynv = CurrentYnvFile ?? CurrentNavPoly?.Ynv ?? CurrentNavPoint?.Ynv ?? CurrentNavPortal?.Ynv;
+            if ((ynv == null) || (ynv.Nav == null)) return null;
+
+            AddYnvToProject(ynv);
+
+            if (copy == null) copy = CurrentNavPoly;
+            bool cp = copyposition && (copy != null);
+            Vector3 targetPos = cp ? copy.Position : GetSpawnPos(10.0f);
+
+            YnvPoly poly = null;
+            if (WorldForm != null)
+            {
+                lock (WorldForm.RenderSyncRoot)
+                {
+                    lock (ProjectSyncRoot)
+                    {
+                        ynv.Polys = ynv.Polys ?? new List<YnvPoly>();
+
+                        poly = new YnvPoly();
+                        poly.Ynv = ynv;
+                        poly.RawData = new NavMeshPoly();
+                        poly.AreaID = (ushort)ynv.AreaID;
+                        poly.PartID = copy?.PartID ?? (ushort)0;
+                        poly.Flags1 = copy?.Flags1 ?? (byte)0;
+                        poly.Flags2 = copy?.Flags2 ?? (byte)0;
+                        poly.Flags3 = copy?.Flags3 ?? (byte)0;
+                        poly.Flags4 = copy?.Flags4 ?? (byte)0;
+                        poly.Flags5 = copy?.Flags5 ?? (byte)0;
+                        poly.UnkX = copy?.UnkX ?? (byte)0;
+                        poly.UnkY = copy?.UnkY ?? (byte)0;
+
+                        if ((copy?.Vertices != null) && (copy.Vertices.Length >= 3))
+                        {
+                            poly.Vertices = (Vector3[])copy.Vertices.Clone();
+                            if (!cp)
+                            {
+                                Vector3 delta = targetPos - copy.Position;
+                                for (int i = 0; i < poly.Vertices.Length; i++)
+                                {
+                                    poly.Vertices[i] += delta;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            const float size = 1.0f;
+                            poly.Vertices = new[]
+                            {
+                                targetPos + new Vector3(-size, -size, 0.0f),
+                                targetPos + new Vector3(size, -size, 0.0f),
+                                targetPos + new Vector3(0.0f, size, 0.0f)
+                            };
+                        }
+
+                        poly.Indices = new ushort[poly.Vertices.Length];
+                        poly.Edges = new YnvEdge[poly.Vertices.Length];
+                        for (int i = 0; i < poly.Edges.Length; i++)
+                        {
+                            poly.Edges[i] = CreateDefaultNavEdge(poly);
+                        }
+                        poly.PortalLinks = (copy?.PortalLinks != null) ? (ushort[])copy.PortalLinks.Clone() : null;
+                        poly.PortalLinkCount = (byte)(poly.PortalLinks?.Length ?? 0);
+                        poly.CalculatePosition();
+                        poly.CalculateAABB();
+
+                        ynv.Polys.Add(poly);
+                        ynv.RepairLinksAndReindex();
+                        ynv.UpdateAllNodePositions();
+                        ynv.UpdateTriangleVertices();
+                        ynv.BuildBVH();
+                    }
+                }
+            }
+            else
+            {
+                lock (ProjectSyncRoot)
+                {
+                    ynv.Polys = ynv.Polys ?? new List<YnvPoly>();
+
+                    poly = new YnvPoly();
+                    poly.Ynv = ynv;
+                    poly.RawData = new NavMeshPoly();
+                    poly.AreaID = (ushort)ynv.AreaID;
+                    poly.PartID = copy?.PartID ?? (ushort)0;
+                    poly.Flags1 = copy?.Flags1 ?? (byte)0;
+                    poly.Flags2 = copy?.Flags2 ?? (byte)0;
+                    poly.Flags3 = copy?.Flags3 ?? (byte)0;
+                    poly.Flags4 = copy?.Flags4 ?? (byte)0;
+                    poly.Flags5 = copy?.Flags5 ?? (byte)0;
+                    poly.UnkX = copy?.UnkX ?? (byte)0;
+                    poly.UnkY = copy?.UnkY ?? (byte)0;
+
+                    if ((copy?.Vertices != null) && (copy.Vertices.Length >= 3))
+                    {
+                        poly.Vertices = (Vector3[])copy.Vertices.Clone();
+                        if (!cp)
+                        {
+                            Vector3 delta = targetPos - copy.Position;
+                            for (int i = 0; i < poly.Vertices.Length; i++)
+                            {
+                                poly.Vertices[i] += delta;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        const float size = 1.0f;
+                        poly.Vertices = new[]
+                        {
+                            targetPos + new Vector3(-size, -size, 0.0f),
+                            targetPos + new Vector3(size, -size, 0.0f),
+                            targetPos + new Vector3(0.0f, size, 0.0f)
+                        };
+                    }
+
+                    poly.Indices = new ushort[poly.Vertices.Length];
+                    poly.Edges = new YnvEdge[poly.Vertices.Length];
+                    for (int i = 0; i < poly.Edges.Length; i++)
+                    {
+                        poly.Edges[i] = CreateDefaultNavEdge(poly);
+                    }
+                    poly.PortalLinks = (copy?.PortalLinks != null) ? (ushort[])copy.PortalLinks.Clone() : null;
+                    poly.PortalLinkCount = (byte)(poly.PortalLinks?.Length ?? 0);
+                    poly.CalculatePosition();
+                    poly.CalculateAABB();
+
+                    ynv.Polys.Add(poly);
+                    ynv.RepairLinksAndReindex();
+                    ynv.UpdateAllNodePositions();
+                    ynv.UpdateTriangleVertices();
+                    ynv.BuildBVH();
+                }
+            }
+
+            RefreshNavEditor(ynv, selectNew ? (object)poly : ynv, selectNew);
+            if (selectNew)
+            {
+                ShowEditYnvPolyPanel(false);
+            }
+            return poly;
+        }
+        public bool DeleteNavPoly()
+        {
+            if (CurrentNavPoly == null) return false;
+            var delpoly = CurrentNavPoly;
+            var ynv = delpoly.Ynv;
+            if (ynv == null) return false;
+            AddYnvToProject(ynv);
+
+            bool res;
+            if (WorldForm != null)
+            {
+                lock (WorldForm.RenderSyncRoot)
+                {
+                    lock (ProjectSyncRoot)
+                    {
+                        res = ynv.RemovePoly(delpoly);
+                    }
+                }
+            }
+            else
+            {
+                lock (ProjectSyncRoot)
+                {
+                    res = ynv.RemovePoly(delpoly);
+                }
+            }
+            if (!res) return false;
+
+            ClosePanel((EditYnvPolyPanel p) => { return p.Tag == delpoly; });
+            CurrentNavPoly = null;
+            RefreshNavEditor(ynv, ynv, false);
+            ShowEditYnvPanel(false);
+            WorldForm?.SelectItem(null);
+            return true;
         }
         public bool IsCurrentNavPoly(YnvPoly poly)
         {
             return poly == CurrentNavPoly;
         }
 
-        public YnvPoint NewNavPoint(YnvPoint copy = null, bool copyposition = false, bool selectNew = true)//TODO!
+        public YnvPoint NewNavPoint(YnvPoint copy = null, bool copyposition = false, bool selectNew = true)
         {
-            return null;
+            var ynv = CurrentYnvFile ?? CurrentNavPoly?.Ynv ?? CurrentNavPoint?.Ynv ?? CurrentNavPortal?.Ynv;
+            if ((ynv == null) || (ynv.Nav == null)) return null;
+
+            AddYnvToProject(ynv);
+
+            if (copy == null) copy = CurrentNavPoint;
+            bool cp = copyposition && (copy != null);
+            Vector3 targetPos = cp ? copy.Position : GetSpawnPos(10.0f);
+
+            YnvPoint point = null;
+            lock (ProjectSyncRoot)
+            {
+                ynv.Points = ynv.Points ?? new List<YnvPoint>();
+                point = new YnvPoint();
+                point.Ynv = ynv;
+                point.RawData = new NavMeshPoint();
+                point.Position = targetPos;
+                point.Angle = copy?.Angle ?? (byte)0;
+                point.Type = copy?.Type ?? (byte)0;
+                ynv.Points.Add(point);
+                ynv.RepairLinksAndReindex();
+                ynv.UpdateAllNodePositions();
+                ynv.BuildBVH();
+            }
+
+            RefreshNavEditor(ynv, selectNew ? (object)point : ynv, selectNew);
+            if (selectNew)
+            {
+                ShowEditYnvPointPanel(false);
+            }
+            return point;
         }
-        public bool DeleteNavPoint()//TODO!
+        public bool DeleteNavPoint()
         {
-            return false;
+            if (CurrentNavPoint == null) return false;
+            var delpoint = CurrentNavPoint;
+            var ynv = delpoint.Ynv;
+            if (ynv == null) return false;
+            AddYnvToProject(ynv);
+
+            bool res;
+            if (WorldForm != null)
+            {
+                lock (WorldForm.RenderSyncRoot)
+                {
+                    lock (ProjectSyncRoot)
+                    {
+                        res = ynv.RemovePoint(delpoint);
+                    }
+                }
+            }
+            else
+            {
+                lock (ProjectSyncRoot)
+                {
+                    res = ynv.RemovePoint(delpoint);
+                }
+            }
+            if (!res) return false;
+
+            ClosePanel((EditYnvPointPanel p) => { return p.Tag == delpoint; });
+            CurrentNavPoint = null;
+            RefreshNavEditor(ynv, ynv, false);
+            ShowEditYnvPanel(false);
+            WorldForm?.SelectItem(null);
+            return true;
         }
         public bool IsCurrentNavPoint(YnvPoint point)
         {
             return point == CurrentNavPoint;
         }
 
-        public YnvPortal NewNavPortal(YnvPortal copy = null, bool copyposition = false, bool selectNew = true)//TODO!
+        public YnvPortal NewNavPortal(YnvPortal copy = null, bool copyposition = false, bool selectNew = true)
         {
-            return null;
+            var ynv = CurrentYnvFile ?? CurrentNavPoly?.Ynv ?? CurrentNavPoint?.Ynv ?? CurrentNavPortal?.Ynv;
+            if ((ynv == null) || (ynv.Nav == null)) return null;
+
+            AddYnvToProject(ynv);
+
+            if (copy == null) copy = CurrentNavPortal;
+            bool cp = copyposition && (copy != null);
+            Vector3 posFrom = cp ? copy.PositionFrom : GetSpawnPos(10.0f);
+            Vector3 posTo = cp ? copy.PositionTo : (posFrom + new Vector3(0.0f, 1.5f, 0.0f));
+
+            YnvPortal portal = null;
+            lock (ProjectSyncRoot)
+            {
+                ynv.Portals = ynv.Portals ?? new List<YnvPortal>();
+                portal = new YnvPortal();
+                portal.Ynv = ynv;
+                portal.RawData = new NavMeshPortal();
+                portal.PositionFrom = posFrom;
+                portal.PositionTo = posTo;
+                portal.Angle = copy?.Angle ?? (byte)0;
+                portal.Type = copy?.Type ?? (byte)1;
+                portal.AreaIDFrom = (ushort)ynv.AreaID;
+                portal.AreaIDTo = (ushort)ynv.AreaID;
+                portal.PolyIDFrom1 = copy?.PolyIDFrom1 ?? (ushort)0x3FFF;
+                portal.PolyIDFrom2 = copy?.PolyIDFrom2 ?? (ushort)0x3FFF;
+                portal.PolyIDTo1 = copy?.PolyIDTo1 ?? (ushort)0x3FFF;
+                portal.PolyIDTo2 = copy?.PolyIDTo2 ?? (ushort)0x3FFF;
+                portal.Unk1 = copy?.Unk1 ?? (ushort)0;
+                portal.Unk2 = copy?.Unk2 ?? (byte)0;
+                ynv.Portals.Add(portal);
+                ynv.RepairLinksAndReindex();
+                ynv.UpdateAllNodePositions();
+                ynv.BuildBVH();
+            }
+
+            RefreshNavEditor(ynv, selectNew ? (object)portal : ynv, selectNew);
+            if (selectNew)
+            {
+                ShowEditYnvPortalPanel(false);
+            }
+            return portal;
         }
-        public bool DeleteNavPortal()//TODO!
+        public bool DeleteNavPortal()
         {
-            return false;
+            if (CurrentNavPortal == null) return false;
+            var delportal = CurrentNavPortal;
+            var ynv = delportal.Ynv;
+            if (ynv == null) return false;
+            AddYnvToProject(ynv);
+
+            bool res;
+            if (WorldForm != null)
+            {
+                lock (WorldForm.RenderSyncRoot)
+                {
+                    lock (ProjectSyncRoot)
+                    {
+                        res = ynv.RemovePortal(delportal);
+                    }
+                }
+            }
+            else
+            {
+                lock (ProjectSyncRoot)
+                {
+                    res = ynv.RemovePortal(delportal);
+                }
+            }
+            if (!res) return false;
+
+            ClosePanel((EditYnvPortalPanel p) => { return p.Tag == delportal; });
+            CurrentNavPortal = null;
+            RefreshNavEditor(ynv, ynv, false);
+            ShowEditYnvPanel(false);
+            WorldForm?.SelectItem(null);
+            return true;
         }
         public bool IsCurrentNavPortal(YnvPortal portal)
         {
             return portal == CurrentNavPortal;
+        }
+
+        public List<string> ValidateCurrentNavMesh(bool attemptRepair)
+        {
+            var ynv = CurrentYnvFile ?? CurrentNavPoly?.Ynv ?? CurrentNavPoint?.Ynv ?? CurrentNavPortal?.Ynv;
+            if (ynv == null) return new List<string>() { "No navmesh selected." };
+
+            List<string> issues;
+            lock (ProjectSyncRoot)
+            {
+                issues = ynv.ValidateNavMesh(attemptRepair);
+            }
+
+            if (attemptRepair)
+            {
+                AddYnvToProject(ynv);
+                RefreshNavEditor(ynv, ynv, false);
+            }
+
+            return issues;
+        }
+
+        public YnvPoly CloneCurrentNavPoly()
+        {
+            if (CurrentNavPoly == null) return null;
+            return NewNavPoly(CurrentNavPoly, true, true);
+        }
+
+        public int SplitCurrentNavPoly()
+        {
+            if (CurrentNavPoly == null) return 0;
+            var source = CurrentNavPoly;
+            if ((source.Vertices == null) || (source.Vertices.Length < 4)) return 0;
+
+            var ynv = source.Ynv;
+            if (ynv == null) return 0;
+            AddYnvToProject(ynv);
+
+            int created = 0;
+            lock (ProjectSyncRoot)
+            {
+                var srcVerts = (Vector3[])source.Vertices.Clone();
+                var template = source.RawData;
+
+                source.Vertices = new[] { srcVerts[0], srcVerts[1], srcVerts[2] };
+                source.Indices = new ushort[3];
+                source.Edges = BuildSplitTriangleEdges(source, source, 0, 1, 2);
+                source.PortalLinks = (source.PortalLinks != null) ? (ushort[])source.PortalLinks.Clone() : null;
+                source.PortalLinkCount = (byte)(source.PortalLinks?.Length ?? 0);
+                source.CalculatePosition();
+                source.CalculateAABB();
+
+                ynv.Polys = ynv.Polys ?? new List<YnvPoly>();
+                for (int i = 2; i < srcVerts.Length - 1; i++)
+                {
+                    var np = new YnvPoly();
+                    np.Ynv = ynv;
+                    np.RawData = template;
+                    np.AreaID = source.AreaID;
+                    np.PartID = source.PartID;
+                    np.Flags1 = source.Flags1;
+                    np.Flags2 = source.Flags2;
+                    np.Flags3 = source.Flags3;
+                    np.Flags4 = source.Flags4;
+                    np.Flags5 = source.Flags5;
+                    np.UnkX = source.UnkX;
+                    np.UnkY = source.UnkY;
+                    np.Vertices = new[] { srcVerts[0], srcVerts[i], srcVerts[i + 1] };
+                    np.Indices = new ushort[3];
+                    np.Edges = BuildSplitTriangleEdges(source, np, 0, i, i + 1);
+                    np.PortalLinks = null;
+                    np.PortalLinkCount = 0;
+                    np.CalculatePosition();
+                    np.CalculateAABB();
+                    ynv.Polys.Add(np);
+                    created++;
+                }
+
+                ynv.RepairLinksAndReindex();
+                ynv.UpdateAllNodePositions();
+                ynv.UpdateTriangleVertices();
+                ynv.BuildBVH();
+            }
+
+            RefreshNavEditor(ynv, source, true);
+            ShowEditYnvPolyPanel(false);
+            return created;
+        }
+
+        public bool WeldCurrentNavPoly(float epsilon = 0.01f)
+        {
+            if (CurrentNavPoly == null) return false;
+            var poly = CurrentNavPoly;
+            var ynv = poly.Ynv;
+            if ((ynv == null) || (poly.Vertices == null) || (poly.Vertices.Length < 3)) return false;
+            AddYnvToProject(ynv);
+
+            bool changed = false;
+            lock (ProjectSyncRoot)
+            {
+                var verts = poly.Vertices;
+                var welded = new List<Vector3>(verts.Length);
+                var keptOldIndices = new List<int>(verts.Length);
+                float eps2 = epsilon * epsilon;
+
+                for (int i = 0; i < verts.Length; i++)
+                {
+                    var v = verts[i];
+                    if (welded.Count == 0)
+                    {
+                        welded.Add(v);
+                        keptOldIndices.Add(i);
+                        continue;
+                    }
+                    if (Vector3.DistanceSquared(welded[welded.Count - 1], v) > eps2)
+                    {
+                        welded.Add(v);
+                        keptOldIndices.Add(i);
+                    }
+                }
+
+                if ((welded.Count >= 2) && (Vector3.DistanceSquared(welded[0], welded[welded.Count - 1]) <= eps2))
+                {
+                    welded.RemoveAt(welded.Count - 1);
+                    keptOldIndices.RemoveAt(keptOldIndices.Count - 1);
+                }
+
+                if (welded.Count < 3) return false;
+                if (welded.Count == verts.Length) return false;
+
+                var oldEdges = poly.Edges;
+                poly.Vertices = welded.ToArray();
+                poly.Indices = new ushort[poly.Vertices.Length];
+                poly.Edges = new YnvEdge[poly.Vertices.Length];
+                for (int i = 0; i < poly.Edges.Length; i++)
+                {
+                    int srcEdgeIndex = keptOldIndices[i];
+                    var srcEdge = ((oldEdges != null) && (srcEdgeIndex < oldEdges.Length)) ? oldEdges[srcEdgeIndex] : null;
+                    poly.Edges[i] = CloneNavEdge(srcEdge, poly);
+                }
+                poly.PortalLinkCount = (byte)(poly.PortalLinks?.Length ?? 0);
+                poly.CalculatePosition();
+                poly.CalculateAABB();
+
+                ynv.RepairLinksAndReindex();
+                ynv.UpdateAllNodePositions();
+                ynv.UpdateTriangleVertices();
+                ynv.BuildBVH();
+                changed = true;
+            }
+
+            if (changed)
+            {
+                RefreshNavEditor(ynv, poly, true);
+                ShowEditYnvPolyPanel(false);
+            }
+            return changed;
         }
 
 

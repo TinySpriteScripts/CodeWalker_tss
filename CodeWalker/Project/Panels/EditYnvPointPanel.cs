@@ -144,7 +144,12 @@ namespace CodeWalker.Project.Panels
 
         private void DeletePointButton_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("Delete Point TODO!");
+            if (YnvPoint == null) return;
+            ProjectForm.SetProjectItem(YnvPoint);
+            if (!ProjectForm.DeleteNavPoint())
+            {
+                MessageBox.Show("Unable to delete the nav point.");
+            }
         }
     }
 }

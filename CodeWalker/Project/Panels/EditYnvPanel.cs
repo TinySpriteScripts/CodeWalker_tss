@@ -19,11 +19,33 @@ namespace CodeWalker.Project.Panels
 
         private bool populatingui = false;
         private bool waschanged = false;
+        private Button ValidateButton;
+        private Button RepairValidateButton;
 
         public EditYnvPanel(ProjectForm projectForm)
         {
             ProjectForm = projectForm;
             InitializeComponent();
+            AddValidationButtons();
+        }
+
+        private void AddValidationButtons()
+        {
+            ValidateButton = new Button();
+            ValidateButton.Name = "ValidateButton";
+            ValidateButton.Size = new Size(116, 23);
+            ValidateButton.Location = new System.Drawing.Point(311, 214);
+            ValidateButton.Text = "Validate NavMesh";
+            ValidateButton.Click += ValidateButton_Click;
+            Controls.Add(ValidateButton);
+
+            RepairValidateButton = new Button();
+            RepairValidateButton.Name = "RepairValidateButton";
+            RepairValidateButton.Size = new Size(116, 23);
+            RepairValidateButton.Location = new System.Drawing.Point(311, 243);
+            RepairValidateButton.Text = "Repair + Validate";
+            RepairValidateButton.Click += RepairValidateButton_Click;
+            Controls.Add(RepairValidateButton);
         }
 
         public void SetYnv(YnvFile ynv)
@@ -258,6 +280,47 @@ namespace CodeWalker.Project.Panels
                 ProjectForm.SetYnvHasChanged(true);
             }
             UpdateFormTitleYnvChanged();
+        }
+
+        private void ValidateButton_Click(object sender, EventArgs e)
+        {
+            RunValidation(false);
+        }
+
+        private void RepairValidateButton_Click(object sender, EventArgs e)
+        {
+            RunValidation(true);
+        }
+
+        private void RunValidation(bool repair)
+        {
+            if (Ynv == null) return;
+            ProjectForm.SetProjectItem(Ynv, false);
+            var issues = ProjectForm.ValidateCurrentNavMesh(repair);
+            if ((issues == null) || (issues.Count == 0))
+            {
+                MessageBox.Show(repair ? "No issues found. Repair pass completed." : "No issues found.", "NavMesh Validator", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                UpdateYnvUI();
+                return;
+            }
+
+            int maxLines = Math.Min(issues.Count, 25);
+            var sb = new StringBuilder();
+            sb.AppendLine($"Found {issues.Count} issue(s):");
+            sb.AppendLine();
+            for (int i = 0; i < maxLines; i++)
+            {
+                sb.AppendLine("- " + issues[i]);
+            }
+            if (issues.Count > maxLines)
+            {
+                sb.AppendLine();
+                sb.AppendLine($"...and {issues.Count - maxLines} more.");
+            }
+
+            Clipboard.SetText(string.Join(Environment.NewLine, issues));
+            MessageBox.Show(sb.ToString() + Environment.NewLine + Environment.NewLine + "Full report copied to clipboard.", "NavMesh Validator", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            UpdateYnvUI();
         }
     }
 }

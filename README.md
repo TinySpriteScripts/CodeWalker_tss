@@ -138,3 +138,49 @@ Recommended release layout:
 - `codewalker_tss\icons\`
 - `codewalker_tss\Shaders\`
 - `codewalker_tss\ImageDB\` (optional separate download)
+
+## NavMesh Editor
+
+Navmesh editing in this fork works on `.ynv` files (not `.ymap`).
+
+### What is supported (Phase 1)
+
+- Create new nav items:
+  - Nav Poly
+  - Nav Point
+  - Nav Portal
+- Delete nav items from their edit panels.
+- Link repair + reindex logic after nav edits.
+- Validator tools:
+  - `Validate NavMesh`
+  - `Repair + Validate`
+- Nav Poly tools:
+  - `Clone`
+  - `Split` (fan split into triangles)
+  - `Weld` (remove duplicate/overlapping consecutive vertices)
+
+### How to use
+
+1. Open CodeWalker world view.
+2. Open Project Window.
+3. Load/select a `.ynv` in the project tree.
+4. Select navmesh items in world (`Selection Mode: NavMesh`) or from project tree.
+5. Use the relevant nav panels:
+   - `Edit Ynv Poly` for poly actions (`Clone`, `Split`, `Weld`, `Delete Polygon`)
+   - `Edit Ynv Point` (`Delete Point`)
+   - `Edit Ynv Portal` (`Delete Portal`)
+6. In `Edit Ynv`, use:
+   - `Validate NavMesh` to check consistency
+   - `Repair + Validate` to auto-fix common link/index issues and then validate
+7. Save the edited `.ynv` from Project Window (`File -> Save` / `Save All`).
+
+### Notes
+
+- `Repair + Validate` is recommended before final save/release.
+- `Split` only works on polygons with 4+ vertices.
+- `Weld` only changes the currently selected polygon.
+- Validation report is copied to clipboard when issues are found.
+- Gizmo edit support:
+  - Nav Poly: position move supported.
+  - Nav Point: position + heading rotation supported.
+  - Nav Portal: position + heading rotation supported.

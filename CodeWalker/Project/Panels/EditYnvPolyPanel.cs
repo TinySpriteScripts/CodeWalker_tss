@@ -17,11 +17,42 @@ namespace CodeWalker.Project.Panels
         public YnvPoly YnvPoly { get; set; }
 
         private bool populatingui = false;
+        private Button ClonePolyButton;
+        private Button SplitPolyButton;
+        private Button WeldPolyButton;
 
         public EditYnvPolyPanel(ProjectForm projectForm)
         {
             ProjectForm = projectForm;
             InitializeComponent();
+            AddAdvancedButtons();
+        }
+
+        private void AddAdvancedButtons()
+        {
+            ClonePolyButton = new Button();
+            ClonePolyButton.Name = "ClonePolyButton";
+            ClonePolyButton.Size = new Size(90, 23);
+            ClonePolyButton.Location = new Point(82, 269);
+            ClonePolyButton.Text = "Clone";
+            ClonePolyButton.Click += ClonePolyButton_Click;
+            Controls.Add(ClonePolyButton);
+
+            SplitPolyButton = new Button();
+            SplitPolyButton.Name = "SplitPolyButton";
+            SplitPolyButton.Size = new Size(90, 23);
+            SplitPolyButton.Location = new Point(370, 269);
+            SplitPolyButton.Text = "Split";
+            SplitPolyButton.Click += SplitPolyButton_Click;
+            Controls.Add(SplitPolyButton);
+
+            WeldPolyButton = new Button();
+            WeldPolyButton.Name = "WeldPolyButton";
+            WeldPolyButton.Size = new Size(90, 23);
+            WeldPolyButton.Location = new Point(466, 269);
+            WeldPolyButton.Text = "Weld";
+            WeldPolyButton.Click += WeldPolyButton_Click;
+            Controls.Add(WeldPolyButton);
         }
 
         public void SetYnvPoly(YnvPoly ynvPoly)
@@ -45,6 +76,9 @@ namespace CodeWalker.Project.Panels
                 ////YnvPolyPanel.Enabled = false;
                 DeletePolyButton.Enabled = false;
                 AddToProjectButton.Enabled = false;
+                ClonePolyButton.Enabled = false;
+                SplitPolyButton.Enabled = false;
+                WeldPolyButton.Enabled = false;
                 AreaIDUpDown.Value = 0;
                 PartIDUpDown.Value = 0;
                 PortalIDUpDown.Value = 0;
@@ -62,6 +96,9 @@ namespace CodeWalker.Project.Panels
                 ////YnvPolyPanel.Enabled = true;
                 DeletePolyButton.Enabled = ProjectForm.YnvExistsInProject(YnvPoly.Ynv);
                 AddToProjectButton.Enabled = !DeletePolyButton.Enabled;
+                ClonePolyButton.Enabled = true;
+                SplitPolyButton.Enabled = (YnvPoly.Vertices?.Length ?? 0) >= 4;
+                WeldPolyButton.Enabled = (YnvPoly.Vertices?.Length ?? 0) >= 3;
                 AreaIDUpDown.Value = YnvPoly.AreaID;
                 PartIDUpDown.Value = YnvPoly.PartID;
                 PortalIDUpDown.Value = YnvPoly.PortalLinkID;
@@ -282,7 +319,45 @@ namespace CodeWalker.Project.Panels
 
         private void DeletePolyButton_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("Delete Polygon TODO!");
+            if (YnvPoly == null) return;
+            ProjectForm.SetProjectItem(YnvPoly);
+            if (!ProjectForm.DeleteNavPoly())
+            {
+                MessageBox.Show("Unable to delete the nav polygon.");
+            }
+        }
+
+        private void ClonePolyButton_Click(object sender, EventArgs e)
+        {
+            if (YnvPoly == null) return;
+            ProjectForm.SetProjectItem(YnvPoly);
+            var clone = ProjectForm.CloneCurrentNavPoly();
+            if (clone == null)
+            {
+                MessageBox.Show("Unable to clone the nav polygon.");
+            }
+        }
+
+        private void SplitPolyButton_Click(object sender, EventArgs e)
+        {
+            if (YnvPoly == null) return;
+            ProjectForm.SetProjectItem(YnvPoly);
+            int created = ProjectForm.SplitCurrentNavPoly();
+            if (created <= 0)
+            {
+                MessageBox.Show("Split requires a polygon with at least 4 vertices.");
+            }
+        }
+
+        private void WeldPolyButton_Click(object sender, EventArgs e)
+        {
+            if (YnvPoly == null) return;
+            ProjectForm.SetProjectItem(YnvPoly);
+            bool welded = ProjectForm.WeldCurrentNavPoly();
+            if (!welded)
+            {
+                MessageBox.Show("No vertices were welded. (Try moving duplicate/overlapping vertices closer.)");
+            }
         }
     }
 }

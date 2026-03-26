@@ -24,20 +24,58 @@ jobs:
         shell: pwsh
         run: |
           $out = "release-package"
+          $imgOut = "release-imagedb"
+          $appRoot = Join-Path $out "codewalker_tss"
+          $imgRoot = Join-Path $imgOut "ImageDB"
           New-Item -ItemType Directory -Force -Path $out | Out-Null
-          Copy-Item "CodeWalker\bin\Release\net48\*" -Destination $out -Recurse -Force
+          New-Item -ItemType Directory -Force -Path $imgOut | Out-Null
+          New-Item -ItemType Directory -Force -Path $appRoot | Out-Null
+
+          $buildOutRid = "CodeWalker\bin\Release\net48\win-x64"
+          $buildOut = "CodeWalker\bin\Release\net48"
+          if (Test-Path $buildOutRid) {
+            Copy-Item "$buildOutRid\*" -Destination $appRoot -Recurse -Force
+          } else {
+            Copy-Item "$buildOut\*" -Destination $appRoot -Recurse -Force
+          }
 
           # Runtime asset folders expected by the app.
           if (Test-Path "icons") {
-            Copy-Item "icons" -Destination $out -Recurse -Force
+            Copy-Item "icons" -Destination $appRoot -Recurse -Force
           }
           if (Test-Path "Shaders") {
-            Copy-Item "Shaders" -Destination $out -Recurse -Force
+            Copy-Item "Shaders" -Destination $appRoot -Recurse -Force
           }
 
-          # Include ImageDB if you want it shipped with release:
+          @"
+          CodeWalker_tss Release
+          ======================
+
+          1) Extract this zip.
+          2) Run codewalker_tss\CodeWalker.exe
+
+          Optional ImageDB pack:
+          - Download codewalker_tss-imagedb.zip from the same release.
+          - Extract so the folder path is:
+            codewalker_tss\ImageDB\
+"@ | Set-Content -Encoding UTF8 (Join-Path $appRoot "README_ImageDB.txt")
+
+          # Package ImageDB separately so updates don't force a 1.3GB download.
           if (Test-Path "ImageDB") {
-            Copy-Item "ImageDB" -Destination $out -Recurse -Force
+            New-Item -ItemType Directory -Force -Path $imgRoot | Out-Null
+            Copy-Item "ImageDB\*" -Destination $imgRoot -Recurse -Force
+
+            @"
+            ImageDB Pack
+            ============
+
+            Extract this so the final path is:
+            codewalker_tss\ImageDB\
+
+            The ImageDB folder should sit next to CodeWalker.exe.
+"@ | Set-Content -Encoding UTF8 (Join-Path $imgOut "README_ImageDB_INSTALL.txt")
+
+            Compress-Archive -Path "$imgOut\*" -DestinationPath "codewalker_tss-imagedb.zip" -Force
           }
 
           Compress-Archive -Path "$out\*" -DestinationPath "codewalker_tss-windows.zip" -Force
@@ -48,9 +86,26 @@ jobs:
           name: codewalker_tss-windows
           path: codewalker_tss-windows.zip
 
-      - name: Create GitHub Release Asset
+      - name: Upload ImageDB artifact
+        if: hashFiles('codewalker_tss-imagedb.zip') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: codewalker_tss-imagedb
+          path: codewalker_tss-imagedb.zip
+
+      - name: Create GitHub Release Assets (with ImageDB)
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') && hashFiles('codewalker_tss-imagedb.zip') != ''
+        with:
+          files: |
+            codewalker_tss-windows.zip
+            codewalker_tss-imagedb.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release Assets (without ImageDB)
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') && hashFiles('codewalker_tss-imagedb.zip') == ''
         with:
           files: codewalker_tss-windows.zip
         env:

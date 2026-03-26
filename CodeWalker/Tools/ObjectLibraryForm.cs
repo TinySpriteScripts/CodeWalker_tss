@@ -130,6 +130,8 @@ namespace CodeWalker.Tools
             FormClosed += ObjectLibraryForm_FormClosed;
             Load += ObjectLibraryForm_Load;
             Resize += ObjectLibraryForm_Resize;
+
+            ApplyThemeFromSettings();
         }
 
         private void ResultsTabControl_SelectedIndexChanged(object sender, EventArgs e)
@@ -776,6 +778,7 @@ namespace CodeWalker.Tools
             else UpdateSetHeader();
 
             RebuildSetTabs();
+            ApplyThemeFromSettings();
         }
 
         private void RebuildSetTabs()
@@ -1067,6 +1070,38 @@ namespace CodeWalker.Tools
                 }
             }
             return null;
+        }
+
+        public void ApplyThemeFromSettings()
+        {
+            var theme = Properties.Settings.Default.GlobalUITheme;
+            var dark = AppThemeManager.IsDarkTheme(theme);
+            var formBack = AppThemeManager.GetThemeFormBackColor(theme);
+            var panelBack = AppThemeManager.GetThemePanelBackColor(theme);
+
+            AppThemeManager.ApplyToForm(this, theme);
+
+            BackColor = formBack;
+            ResultsTabControl.BackColor = panelBack;
+
+            foreach (TabPage tab in ResultsTabControl.TabPages)
+            {
+                tab.UseVisualStyleBackColor = !dark;
+                tab.BackColor = dark ? formBack : SystemColors.Control;
+                tab.ForeColor = dark ? Color.Gainsboro : SystemColors.ControlText;
+            }
+
+            AllResultsPanel.BackColor = dark ? panelBack : SystemColors.Control;
+            FavoriteResultsPanel.BackColor = dark ? panelBack : SystemColors.Control;
+            SetResultsPanel.BackColor = dark ? panelBack : SystemColors.Control;
+
+            foreach (var panel in SetPanelsByPath.Values)
+            {
+                if (panel != null)
+                {
+                    panel.BackColor = dark ? panelBack : SystemColors.Control;
+                }
+            }
         }
     }
 }

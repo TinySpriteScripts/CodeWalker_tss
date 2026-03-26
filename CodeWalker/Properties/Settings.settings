@@ -173,6 +173,9 @@
     <Setting Name="ExplorerWindowTheme" Type="System.String" Scope="User">
       <Value Profile="(Default)">Windows</Value>
     </Setting>
+    <Setting Name="GlobalUITheme" Type="System.String" Scope="User">
+      <Value Profile="(Default)">TSS</Value>
+    </Setting>
     <Setting Name="Deferred" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">True</Value>
     </Setting>

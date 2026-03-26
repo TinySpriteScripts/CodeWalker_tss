@@ -200,10 +200,30 @@ namespace CodeWalker
 
         public static string GetEnhancedFormTitle(string t)
         {
+            if (string.IsNullOrWhiteSpace(t)) t = "CodeWalker x TSS";
+            if (t.Contains("(GTAV Enhanced)")) return t;
             return t + " (GTAV Enhanced)";
+        }
+        public static string GetBrandedTitle(string t)
+        {
+            if (string.IsNullOrWhiteSpace(t)) return "CodeWalker x TSS";
+
+            var r = t;
+            r = r.Replace("CodeWalker by dexyfex", "CodeWalker x TSS");
+            r = r.Replace("About CodeWalker by dexyfex", "About CodeWalker x TSS");
+
+            if (!r.Contains("CodeWalker x TSS") && r.Contains("CodeWalker"))
+            {
+                r = r.Replace("CodeWalker", "CodeWalker x TSS");
+            }
+
+            return r;
         }
         public static void UpdateEnhancedFormTitle(Form form)
         {
+            if (form == null) return;
+
+            form.Text = GetBrandedTitle(form.Text);
             if (IsGen9) form.Text = GetEnhancedFormTitle(form.Text);
         }
     }

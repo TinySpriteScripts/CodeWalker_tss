@@ -42,6 +42,7 @@ namespace CodeWalker.World
             LoadMouseSettings();
 
             LoadAdvancedSettings();
+            ApplyThemeFromSettings();
         }
 
         private void LoadKeyBindings()
@@ -74,6 +75,7 @@ namespace CodeWalker.World
         {
             FolderTextBox.Text = GTAFolder.CurrentGTAFolder;
             ExcludeFoldersTextBox.Text = Settings.Default.ExcludeFolders;
+            GlobalThemeComboBox.SelectedIndex = Math.Max(GlobalThemeComboBox.FindStringExact(AppThemeManager.NormalizeTheme(Settings.Default.GlobalUITheme)), 0);
             ShadowCascadesUpDown.Value = Settings.Default.ShadowCascades;
             CacheSizeUpDown.Value = Math.Min(Math.Max(Settings.Default.CacheSize / 1048576, CacheSizeUpDown.Minimum), CacheSizeUpDown.Maximum);
             CacheTimeUpDown.Value = Math.Min(Math.Max((decimal)Settings.Default.CacheTime, CacheTimeUpDown.Minimum), CacheTimeUpDown.Maximum);
@@ -252,6 +254,7 @@ namespace CodeWalker.World
 
 
                 LoadAdvancedSettings();
+                ApplyThemeFromSettings();
 
 
                 if (worldForm != null)
@@ -320,6 +323,20 @@ namespace CodeWalker.World
         private void CollisionCacheSizeUpDown_ValueChanged(object sender, EventArgs e)
         {
             Settings.Default.GPUBoundCompCacheSize = (long)CollisionCacheSizeUpDown.Value * 1048576;
+        }
+
+        private void GlobalThemeComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            var selected = (GlobalThemeComboBox.SelectedItem as string) ?? AppThemeManager.ThemeTss;
+            Settings.Default.GlobalUITheme = AppThemeManager.NormalizeTheme(selected);
+            worldForm?.ApplyGlobalThemeFromSettings();
+            Settings.Default.Save();
+            ApplyThemeFromSettings();
+        }
+
+        public void ApplyThemeFromSettings()
+        {
+            AppThemeManager.ApplyToForm(this, Settings.Default.GlobalUITheme);
         }
     }
 }

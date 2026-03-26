@@ -706,6 +706,18 @@ namespace CodeWalker.Properties {
                 this["ExplorerWindowTheme"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("TSS")]
+        public string GlobalUITheme {
+            get {
+                return ((string)(this["GlobalUITheme"]));
+            }
+            set {
+                this["GlobalUITheme"] = value;
+            }
+        }
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]

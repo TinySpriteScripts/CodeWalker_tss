@@ -64,6 +64,8 @@
             this.label15 = new System.Windows.Forms.Label();
             this.label13 = new System.Windows.Forms.Label();
             this.ExcludeFoldersTextBox = new System.Windows.Forms.TextBox();
+            this.GlobalThemeLabel = new System.Windows.Forms.Label();
+            this.GlobalThemeComboBox = new System.Windows.Forms.ComboBox();
             this.label11 = new System.Windows.Forms.Label();
             this.CacheTimeUpDown = new System.Windows.Forms.NumericUpDown();
             this.label12 = new System.Windows.Forms.Label();
@@ -313,6 +315,8 @@
             this.AdvancedTabPage.Controls.Add(this.label15);
             this.AdvancedTabPage.Controls.Add(this.label13);
             this.AdvancedTabPage.Controls.Add(this.ExcludeFoldersTextBox);
+            this.AdvancedTabPage.Controls.Add(this.GlobalThemeLabel);
+            this.AdvancedTabPage.Controls.Add(this.GlobalThemeComboBox);
             this.AdvancedTabPage.Controls.Add(this.label11);
             this.AdvancedTabPage.Controls.Add(this.CacheTimeUpDown);
             this.AdvancedTabPage.Controls.Add(this.label12);
@@ -587,6 +591,29 @@
             this.ExcludeFoldersTextBox.Size = new System.Drawing.Size(303, 20);
             this.ExcludeFoldersTextBox.TabIndex = 50;
             this.ExcludeFoldersTextBox.TextChanged += new System.EventHandler(this.ExcludeFoldersTextBox_TextChanged);
+            // 
+            // GlobalThemeLabel
+            // 
+            this.GlobalThemeLabel.AutoSize = true;
+            this.GlobalThemeLabel.Location = new System.Drawing.Point(6, 389);
+            this.GlobalThemeLabel.Name = "GlobalThemeLabel";
+            this.GlobalThemeLabel.Size = new System.Drawing.Size(56, 13);
+            this.GlobalThemeLabel.TabIndex = 78;
+            this.GlobalThemeLabel.Text = "UI theme:";
+            // 
+            // GlobalThemeComboBox
+            // 
+            this.GlobalThemeComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.GlobalThemeComboBox.FormattingEnabled = true;
+            this.GlobalThemeComboBox.Items.AddRange(new object[] {
+            "TSS",
+            "TSS Blue",
+            "Default CW"});
+            this.GlobalThemeComboBox.Location = new System.Drawing.Point(110, 386);
+            this.GlobalThemeComboBox.Name = "GlobalThemeComboBox";
+            this.GlobalThemeComboBox.Size = new System.Drawing.Size(140, 21);
+            this.GlobalThemeComboBox.TabIndex = 79;
+            this.GlobalThemeComboBox.SelectedIndexChanged += new System.EventHandler(this.GlobalThemeComboBox_SelectedIndexChanged);
             // 
             // label11
             // 
@@ -867,6 +894,8 @@
         private System.Windows.Forms.Label label12;
         private System.Windows.Forms.Label label13;
         private System.Windows.Forms.TextBox ExcludeFoldersTextBox;
+        private System.Windows.Forms.Label GlobalThemeLabel;
+        private System.Windows.Forms.ComboBox GlobalThemeComboBox;
         private System.Windows.Forms.Label label14;
         private System.Windows.Forms.NumericUpDown GPUCacheTimeUpDown;
         private System.Windows.Forms.Label label15;

@@ -2,6 +2,7 @@
 using CodeWalker.GameFiles;
 using CodeWalker.Properties;
 using CodeWalker.Tools;
+using CodeWalker.Utils;
 using CodeWalker.World;
 using System;
 using System.Collections.Generic;
@@ -59,7 +60,7 @@ namespace CodeWalker
         {
             InitializeComponent();
 
-            SetTheme(Settings.Default.ExplorerWindowTheme, false);
+            SetTheme(AppThemeManager.GetExplorerWindowThemeForGlobal(Settings.Default.GlobalUITheme), false);
 
             ShowMainListViewPathColumn(false);
 

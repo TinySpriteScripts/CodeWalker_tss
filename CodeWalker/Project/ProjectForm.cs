@@ -122,8 +122,9 @@ namespace CodeWalker.Project
             WorldForm = worldForm;
 
             InitializeComponent();
+            GTAFolder.UpdateEnhancedFormTitle(this);
 
-            SetTheme(Settings.Default.ProjectWindowTheme, false);
+            SetTheme(AppThemeManager.GetProjectWindowThemeForGlobal(Settings.Default.GlobalUITheme), false);
             ShowDefaultPanels();
 
 
@@ -249,6 +250,19 @@ namespace CodeWalker.Project
             }
 
 
+        }
+
+        public void ApplyGlobalTheme(string globalTheme)
+        {
+            var targetTheme = AppThemeManager.GetProjectWindowThemeForGlobal(globalTheme);
+            Settings.Default.ProjectWindowTheme = targetTheme;
+
+            // Avoid forcing an active project close. If a project is open, the
+            // theme will take effect the next time the project window opens.
+            if (CurrentProjectFile == null)
+            {
+                SetTheme(targetTheme, false);
+            }
         }
 
         private T FindPanel<T>(Func<T, bool> findFunc) where T : ProjectPanel
@@ -8927,12 +8941,13 @@ namespace CodeWalker.Project
         {
             if (CurrentProjectFile == null)
             {
-                Text = "Project - CodeWalker by dexyfex";
+                Text = "Project - CodeWalker x TSS";
             }
             else
             {
-                Text = CurrentProjectFile.Name + " - CodeWalker by dexyfex";
+                Text = CurrentProjectFile.Name + " - CodeWalker x TSS";
             }
+            GTAFolder.UpdateEnhancedFormTitle(this);
         }
 
         private void RefreshProjectUI()

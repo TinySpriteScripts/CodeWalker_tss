@@ -16,6 +16,7 @@ using CodeWalker.Rendering;
 using CodeWalker.GameFiles;
 using CodeWalker.Properties;
 using CodeWalker.Tools;
+using CodeWalker.Utils;
 
 namespace CodeWalker
 {
@@ -230,6 +231,7 @@ namespace CodeWalker
             initedOk = Renderer.Init();
 
             GTAFolder.UpdateEnhancedFormTitle(this);
+            ApplyGlobalThemeFromSettings();
         }
 
 
@@ -4826,6 +4828,7 @@ namespace CodeWalker
         private void LoadSettings()
         {
             var s = Settings.Default;
+            ApplyGlobalThemeFromSettings();
             WindowState = s.WindowMaximized ? FormWindowState.Maximized : WindowState;
             FullScreenCheckBox.Checked = s.FullScreen;
             WireframeCheckBox.Checked = s.Wireframe;
@@ -4879,6 +4882,34 @@ namespace CodeWalker
             gameFileCache.SelectedDlc = s.DLC;
             EnableDlcCheckBox.Checked = !string.IsNullOrEmpty(s.DLC);
         }
+
+        public void ApplyGlobalThemeFromSettings()
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(ApplyGlobalThemeFromSettings));
+                return;
+            }
+
+            var theme = AppThemeManager.NormalizeTheme(Settings.Default.GlobalUITheme);
+            Settings.Default.GlobalUITheme = theme;
+            AppThemeManager.SyncLegacyThemeSettings(theme);
+            AppThemeManager.ApplyToForm(this, theme);
+
+            if (SettingsForm != null && !SettingsForm.IsDisposed)
+            {
+                SettingsForm.ApplyThemeFromSettings();
+            }
+            if (objectLibraryForm != null && !objectLibraryForm.IsDisposed)
+            {
+                objectLibraryForm.ApplyThemeFromSettings();
+            }
+            if (ProjectForm != null && !ProjectForm.IsDisposed)
+            {
+                ProjectForm.ApplyGlobalTheme(theme);
+            }
+        }
+
         private void SaveSettings()
         {
             var s = Settings.Default;

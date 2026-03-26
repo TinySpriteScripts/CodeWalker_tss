@@ -66,7 +66,7 @@
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(368, 26);
             this.label2.TabIndex = 2;
-            this.label2.Text = "CodeWalker by dexyfex";
+            this.label2.Text = "CodeWalker x TSS";
             this.label2.TextAlign = System.Drawing.ContentAlignment.TopCenter;
             // 
             // AboutForm
@@ -82,7 +82,7 @@
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.Name = "AboutForm";
-            this.Text = "About CodeWalker by dexyfex";
+            this.Text = "About CodeWalker x TSS";
             this.ResumeLayout(false);
 
         }

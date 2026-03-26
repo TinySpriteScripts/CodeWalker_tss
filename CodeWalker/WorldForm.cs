@@ -274,17 +274,17 @@ namespace CodeWalker
             AddIcon("Google Marker", "icon_google_marker_64x64.png", 64, 64, 11.0f, 40.0f, 1.0f);
             AddIcon("Glokon Marker", "icon_glokon_normal_32x32.png", 32, 32, 11.0f, 32.0f, 1.0f);
             AddIcon("Glokon Debug", "icon_glokon_debug_32x32.png", 32, 32, 11.5f, 32.0f, 1.0f);
-            MarkerIcon = Icons[1];
-            LocatorIcon = Icons[2];
+            MarkerIcon = Icons.FirstOrDefault(i => i?.Name == "Glokon Marker") ?? Icons.FirstOrDefault();
+            LocatorIcon = Icons.FirstOrDefault(i => i?.Name == "Glokon Debug") ?? MarkerIcon;
             foreach (MapIcon icon in Icons)
             {
                 MarkerStyleComboBox.Items.Add(icon);
                 LocatorStyleComboBox.Items.Add(icon);
             }
-            MarkerStyleComboBox.SelectedItem = MarkerIcon; //LoadSettings will handle this
-            LocatorStyleComboBox.SelectedItem = LocatorIcon;
+            if (MarkerIcon != null) MarkerStyleComboBox.SelectedItem = MarkerIcon; //LoadSettings will handle this
+            if (LocatorIcon != null) LocatorStyleComboBox.SelectedItem = LocatorIcon;
             LocatorMarker = new MapMarker();
-            LocatorMarker.Icon = LocatorIcon;
+            LocatorMarker.Icon = LocatorIcon ?? MarkerIcon;
             LocatorMarker.IsMovable = true;
             //AddDefaultMarkers(); //some POI to start with
 
@@ -4843,8 +4843,14 @@ namespace CodeWalker
             RenderModeComboBox.SelectedIndex = Math.Max(RenderModeComboBox.FindString(s.RenderMode), 0);
             TextureSamplerComboBox.SelectedIndex = Math.Max(TextureSamplerComboBox.FindString(s.RenderTextureSampler), 0);
             TextureCoordsComboBox.SelectedIndex = Math.Max(TextureCoordsComboBox.FindString(s.RenderTextureSamplerCoord), 0);
-            MarkerStyleComboBox.SelectedIndex = Math.Max(MarkerStyleComboBox.FindString(s.MarkerStyle), 0);
-            LocatorStyleComboBox.SelectedIndex = Math.Max(LocatorStyleComboBox.FindString(s.LocatorStyle), 0);
+            if (MarkerStyleComboBox.Items.Count > 0)
+            {
+                MarkerStyleComboBox.SelectedIndex = Math.Max(MarkerStyleComboBox.FindString(s.MarkerStyle), 0);
+            }
+            if (LocatorStyleComboBox.Items.Count > 0)
+            {
+                LocatorStyleComboBox.SelectedIndex = Math.Max(LocatorStyleComboBox.FindString(s.LocatorStyle), 0);
+            }
             MarkerDepthClipCheckBox.Checked = s.MarkerDepthClip;
             AnisotropicFilteringCheckBox.Checked = s.AnisotropicFiltering;
             BoundsStyleComboBox.SelectedIndex = Math.Max(BoundsStyleComboBox.FindString(s.BoundsStyle), 0);

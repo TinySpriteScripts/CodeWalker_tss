@@ -27,6 +27,14 @@ jobs:
           New-Item -ItemType Directory -Force -Path $out | Out-Null
           Copy-Item "CodeWalker\bin\Release\net48\*" -Destination $out -Recurse -Force
 
+          # Runtime asset folders expected by the app.
+          if (Test-Path "icons") {
+            Copy-Item "icons" -Destination $out -Recurse -Force
+          }
+          if (Test-Path "Shaders") {
+            Copy-Item "Shaders" -Destination $out -Recurse -Force
+          }
+
           # Include ImageDB if you want it shipped with release:
           if (Test-Path "ImageDB") {
             Copy-Item "ImageDB" -Destination $out -Recurse -Force

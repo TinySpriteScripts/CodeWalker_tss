@@ -1,4 +1,4 @@
-﻿using CodeWalker.GameFiles;
+using CodeWalker.GameFiles;
 using CodeWalker.World;
 using SharpDX;
 using System;
@@ -1331,9 +1331,181 @@ namespace CodeWalker.Project
             return "PathNode " + (PathNode?._RawData.ToString() ?? "") + ": Position";
         }
     }
+    public class NavPolyPositionUndoStep : UndoStep
+    {
+        public YnvPoly Poly { get; set; }
+        public Vector3 StartPosition { get; set; }
+        public Vector3 EndPosition { get; set; }
 
+        public NavPolyPositionUndoStep(YnvPoly poly, Vector3 startpos, WorldForm wf)
+        {
+            Poly = poly;
+            StartPosition = startpos;
+            EndPosition = poly?.Position ?? Vector3.Zero;
 
+            UpdateGraphics(wf);
+        }
 
+        private void Update(WorldForm wf, ref MapSelection sel, Vector3 p)
+        {
+            Poly?.SetPosition(p);
+
+            if (Poly != sel.NavPoly)
+            {
+                wf.SelectObject(Poly);
+            }
+            wf.SetWidgetPosition(p);
+
+            UpdateGraphics(wf);
+        }
+
+        private void UpdateGraphics(WorldForm wf)
+        {
+            if (Poly != null)
+            {
+                wf.UpdateNavPolyGraphics(Poly, false);
+            }
+        }
+
+        public override void Undo(WorldForm wf, ref MapSelection sel)
+        {
+            Update(wf, ref sel, StartPosition);
+        }
+
+        public override void Redo(WorldForm wf, ref MapSelection sel)
+        {
+            Update(wf, ref sel, EndPosition);
+        }
+
+        public override string ToString()
+        {
+            return "NavPoly " + (Poly?.ToString() ?? "") + ": Position";
+        }
+    }
+
+    public class NavPolyVerticesUndoStep : UndoStep
+    {
+        public YnvPoly Poly { get; set; }
+        public Vector3[] StartVertices { get; set; }
+        public Vector3[] EndVertices { get; set; }
+        public YnvEdge[] StartEdges { get; set; }
+        public YnvEdge[] EndEdges { get; set; }
+
+        public NavPolyVerticesUndoStep(YnvPoly poly, Vector3[] startVertices, YnvEdge[] startEdges, WorldForm wf)
+        {
+            Poly = poly;
+            StartVertices = CloneVertices(startVertices);
+            EndVertices = CloneVertices(poly?.Vertices);
+            StartEdges = CloneEdges(startEdges, poly);
+            EndEdges = CloneEdges(poly?.Edges, poly);
+
+            UpdateGraphics(wf);
+        }
+
+        private static Vector3[] CloneVertices(Vector3[] verts)
+        {
+            if (verts == null) return null;
+            var copy = new Vector3[verts.Length];
+            Array.Copy(verts, copy, verts.Length);
+            return copy;
+        }
+
+        private static YnvEdge CloneEdge(YnvEdge src, YnvPoly owner)
+        {
+            if (src == null) return null;
+            return new YnvEdge(src, owner);
+        }
+
+        private static YnvEdge[] CloneEdges(YnvEdge[] edges, YnvPoly owner)
+        {
+            if (edges == null) return null;
+            var copy = new YnvEdge[edges.Length];
+            for (int i = 0; i < edges.Length; i++)
+            {
+                copy[i] = CloneEdge(edges[i], owner);
+            }
+            return copy;
+        }
+
+        private static YnvEdge CreateDefaultEdge(YnvPoly owner)
+        {
+            var edge = new YnvEdge();
+            edge.Ynv = owner?.Ynv;
+            edge.RawData = new NavMeshEdge();
+            edge.Poly1 = owner;
+            edge.Poly2 = owner;
+            edge.AreaID1 = 0x3FFF;
+            edge.AreaID2 = 0x3FFF;
+            edge.PolyID1 = 0x3FFF;
+            edge.PolyID2 = 0x3FFF;
+            return edge;
+        }
+
+        private static YnvEdge[] BuildEdges(YnvEdge[] snapshot, YnvPoly owner, int vertexCount)
+        {
+            var result = new List<YnvEdge>();
+            if (snapshot != null)
+            {
+                for (int i = 0; i < snapshot.Length; i++)
+                {
+                    result.Add(CloneEdge(snapshot[i], owner));
+                }
+            }
+            while (result.Count < vertexCount)
+            {
+                result.Add(CreateDefaultEdge(owner));
+            }
+            if (result.Count > vertexCount)
+            {
+                result.RemoveRange(vertexCount, result.Count - vertexCount);
+            }
+            return result.ToArray();
+        }
+
+        private void Update(WorldForm wf, ref MapSelection sel, Vector3[] verts, YnvEdge[] edges)
+        {
+            if (Poly == null) return;
+            if ((verts == null) || (verts.Length < 3)) return;
+
+            Poly.Vertices = CloneVertices(verts);
+            Poly.Edges = BuildEdges(edges, Poly, Poly.Vertices.Length);
+            Poly.Indices = new ushort[Poly.Vertices.Length];
+            Poly.CalculatePosition();
+            Poly.CalculateAABB();
+            Poly.Ynv?.RepairLinksAndReindex();
+
+            if (Poly != sel.NavPoly)
+            {
+                wf.SelectObject(Poly);
+            }
+            wf.SetWidgetPosition(Poly.Position);
+
+            UpdateGraphics(wf);
+        }
+
+        private void UpdateGraphics(WorldForm wf)
+        {
+            if (Poly != null)
+            {
+                wf.UpdateNavPolyGraphics(Poly, true);
+            }
+        }
+
+        public override void Undo(WorldForm wf, ref MapSelection sel)
+        {
+            Update(wf, ref sel, StartVertices, StartEdges);
+        }
+
+        public override void Redo(WorldForm wf, ref MapSelection sel)
+        {
+            Update(wf, ref sel, EndVertices, EndEdges);
+        }
+
+        public override string ToString()
+        {
+            return "NavPoly " + (Poly?.ToString() ?? "") + ": Vertices";
+        }
+    }
     public class NavPointPositionUndoStep : UndoStep
     {
         public YnvPoint Point { get; set; }
@@ -1784,3 +1956,6 @@ namespace CodeWalker.Project
 
 
 }
+
+
+

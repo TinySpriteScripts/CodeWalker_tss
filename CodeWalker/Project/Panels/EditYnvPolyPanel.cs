@@ -20,6 +20,7 @@ namespace CodeWalker.Project.Panels
         private Button ClonePolyButton;
         private Button SplitPolyButton;
         private Button WeldPolyButton;
+        private Button SnapToGroundButton;
 
         public EditYnvPolyPanel(ProjectForm projectForm)
         {
@@ -53,6 +54,14 @@ namespace CodeWalker.Project.Panels
             WeldPolyButton.Text = "Weld";
             WeldPolyButton.Click += WeldPolyButton_Click;
             Controls.Add(WeldPolyButton);
+
+            SnapToGroundButton = new Button();
+            SnapToGroundButton.Name = "SnapToGroundButton";
+            SnapToGroundButton.Size = new Size(90, 23);
+            SnapToGroundButton.Location = new Point(466, 298);
+            SnapToGroundButton.Text = "Snap Ground";
+            SnapToGroundButton.Click += SnapToGroundButton_Click;
+            Controls.Add(SnapToGroundButton);
         }
 
         public void SetYnvPoly(YnvPoly ynvPoly)
@@ -79,6 +88,7 @@ namespace CodeWalker.Project.Panels
                 ClonePolyButton.Enabled = false;
                 SplitPolyButton.Enabled = false;
                 WeldPolyButton.Enabled = false;
+                SnapToGroundButton.Enabled = false;
                 AreaIDUpDown.Value = 0;
                 PartIDUpDown.Value = 0;
                 PortalIDUpDown.Value = 0;
@@ -99,6 +109,7 @@ namespace CodeWalker.Project.Panels
                 ClonePolyButton.Enabled = true;
                 SplitPolyButton.Enabled = (YnvPoly.Vertices?.Length ?? 0) >= 4;
                 WeldPolyButton.Enabled = (YnvPoly.Vertices?.Length ?? 0) >= 3;
+                SnapToGroundButton.Enabled = (YnvPoly.Vertices?.Length ?? 0) >= 3;
                 AreaIDUpDown.Value = YnvPoly.AreaID;
                 PartIDUpDown.Value = YnvPoly.PartID;
                 PortalIDUpDown.Value = YnvPoly.PortalLinkID;
@@ -357,6 +368,17 @@ namespace CodeWalker.Project.Panels
             if (!welded)
             {
                 MessageBox.Show("No vertices were welded. (Try moving duplicate/overlapping vertices closer.)");
+            }
+        }
+
+        private void SnapToGroundButton_Click(object sender, EventArgs e)
+        {
+            if (YnvPoly == null) return;
+            ProjectForm.SetProjectItem(YnvPoly);
+            bool snapped = ProjectForm.SnapCurrentNavPolyToGround();
+            if (!snapped)
+            {
+                MessageBox.Show("No vertex was snapped. Check collision visibility/layers and make sure ground exists below.");
             }
         }
     }

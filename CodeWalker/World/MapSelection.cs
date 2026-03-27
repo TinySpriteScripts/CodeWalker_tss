@@ -1,4 +1,4 @@
-﻿using CodeWalker.GameFiles;
+using CodeWalker.GameFiles;
 using CodeWalker.Project;
 using CodeWalker.World;
 using SharpDX;
@@ -364,7 +364,7 @@ namespace CodeWalker
             if (CollisionPoly != null) return true;
             if (CollisionVertex != null) return true;
             if (PathNode != null) return true;
-            //if (NavPoly != null) return true;
+            if (NavPoly != null) return true;
             if (NavPoint != null) return true;
             if (NavPortal != null) return true;
             if (TrainTrackNode != null) return true;
@@ -473,7 +473,10 @@ namespace CodeWalker
             }
             else if (NavPoly != null)
             {
-                //todo...
+                switch (mode)
+                {
+                    case WidgetMode.Position: return new NavPolyPositionUndoStep(NavPoly, startPos, wf);
+                }
             }
             else if (NavPoint != null)
             {
@@ -1643,3 +1646,4 @@ namespace CodeWalker
 
 
 }
+

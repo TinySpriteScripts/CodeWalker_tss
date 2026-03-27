@@ -224,6 +224,8 @@ namespace CodeWalker.GameFiles
 
         private void BuildStructs()
         {
+            EnsureBoundsContainEditableGeometry();
+
             Vector3 posoffset = Nav.SectorTree?.AABBMin.XYZ() ?? Vector3.Zero;
             Vector3 aabbsize = Nav.AABBSize;
             Vector3 aabbsizeinv = 1.0f / aabbsize;
@@ -417,6 +419,78 @@ namespace CodeWalker.GameFiles
 
             Nav.SectorTree = root;
 
+        }
+
+        private void EnsureBoundsContainEditableGeometry()
+        {
+            if (Nav == null) return;
+            if (Nav.SectorTree == null)
+            {
+                Nav.SectorTree = new NavMeshSector();
+                Nav.SectorTree.SetAABBs(new Vector3(-1.0f, -1.0f, -1.0f), new Vector3(1.0f, 1.0f, 1.0f));
+            }
+
+            Vector3 min = Nav.SectorTree.AABBMin.XYZ();
+            Vector3 max = Nav.SectorTree.AABBMax.XYZ();
+            bool hasGeom = false;
+
+            Action<Vector3> include = (v) =>
+            {
+                if (!hasGeom)
+                {
+                    min = v;
+                    max = v;
+                    hasGeom = true;
+                }
+                else
+                {
+                    min = Vector3.Min(min, v);
+                    max = Vector3.Max(max, v);
+                }
+            };
+
+            if (Polys != null)
+            {
+                for (int i = 0; i < Polys.Count; i++)
+                {
+                    var pverts = Polys[i]?.Vertices;
+                    if (pverts == null) continue;
+                    for (int v = 0; v < pverts.Length; v++)
+                    {
+                        include(pverts[v]);
+                    }
+                }
+            }
+            if (Points != null)
+            {
+                for (int i = 0; i < Points.Count; i++)
+                {
+                    include(Points[i].Position);
+                }
+            }
+            if (Portals != null)
+            {
+                for (int i = 0; i < Portals.Count; i++)
+                {
+                    include(Portals[i].PositionFrom);
+                    include(Portals[i].PositionTo);
+                }
+            }
+
+            if (!hasGeom) return;
+
+            const float pad = 0.25f;
+            min -= new Vector3(pad, pad, pad);
+            max += new Vector3(pad, pad, pad);
+
+            var size = max - min;
+            size.X = Math.Max(size.X, 0.01f);
+            size.Y = Math.Max(size.Y, 0.01f);
+            size.Z = Math.Max(size.Z, 0.01f);
+            max = min + size;
+
+            Nav.SectorTree.SetAABBs(min, max);
+            Nav.AABBSize = size;
         }
 
         private uint EnsureEdgeAreaID(uint areaid, Dictionary<uint, uint> areadict, List<uint> arealist)

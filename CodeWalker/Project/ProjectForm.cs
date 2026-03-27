@@ -5609,6 +5609,55 @@ namespace CodeWalker.Project
             return changed;
         }
 
+        public bool SnapCurrentNavPolyToGround(float castUp = 2.0f, float castDown = 300.0f)
+        {
+            if (CurrentNavPoly == null) return false;
+            if (WorldForm == null) return false;
+
+            var poly = CurrentNavPoly;
+            var ynv = poly.Ynv;
+            if ((ynv == null) || (poly.Vertices == null) || (poly.Vertices.Length < 3)) return false;
+            AddYnvToProject(ynv);
+
+            lock (ProjectSyncRoot)
+            {
+                var center = poly.Position;
+                var ray = new Ray(center + new Vector3(0.0f, 0.0f, 0.05f), -Vector3.UnitZ);
+                var hit = WorldForm.Raycast(ray);
+                if (!hit.Hit) return false;
+
+                float maxDrop = castDown + 0.05f;
+                float drop = (center.Z + 0.05f) - hit.Position.Z;
+                if ((drop < 0.0f) || (drop > maxDrop)) return false;
+
+                float newZ = hit.Position.Z;
+                if (newZ > center.Z + 0.001f) return false; // never lift from this tool
+
+                float dz = newZ - center.Z;
+                if (Math.Abs(dz) < 0.0001f) return false;
+
+                var verts = (Vector3[])poly.Vertices.Clone();
+                for (int i = 0; i < verts.Length; i++)
+                {
+                    var v = verts[i];
+                    verts[i] = new Vector3(v.X, v.Y, v.Z + dz);
+                }
+
+                poly.Vertices = verts;
+                poly.Indices = new ushort[poly.Vertices.Length];
+                poly.CalculatePosition();
+                poly.CalculateAABB();
+                ynv.RepairLinksAndReindex();
+                ynv.UpdateAllNodePositions();
+                ynv.UpdateTriangleVertices();
+                ynv.BuildBVH();
+            }
+
+            RefreshNavEditor(ynv, poly, true);
+            ShowEditYnvPolyPanel(false);
+            return true;
+        }
+
 
 
 

@@ -158,6 +158,7 @@ Navmesh editing in this fork works on `.ynv` files (not `.ymap`).
   - `Clone`
   - `Split` (fan split into triangles)
   - `Weld` (remove duplicate/overlapping consecutive vertices)
+  - `Snap Ground` (projects polygon vertices down to collision below)
 
 ### How to use
 
@@ -184,3 +185,10 @@ Navmesh editing in this fork works on `.ynv` files (not `.ymap`).
   - Nav Poly: position move supported.
   - Nav Point: position + heading rotation supported.
   - Nav Portal: position + heading rotation supported.
+- Vertex edit support (Nav Poly):
+  - Hover a selected poly vertex to show handle highlight.
+  - Left-drag a vertex handle to move it in XY (Z is locked).
+  - Hold `Shift` and left-drag a vertex handle to insert a new vertex and drag it.
+  - Press `Delete` to remove the currently selected vertex (minimum 3 vertices enforced).
+  - When a vertex is selected, the main transform gizmo snaps to that vertex and can move it in full 3D.
+  - `Snap Ground` drops the whole selected poly to collision directly below its center (shape preserved, no upward lift).
